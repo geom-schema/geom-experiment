@@ -2,16 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Schema Association Task (No CSV)</title>
+    <title>Schema Association Task</title>
+
+    <!-- jsPsych core + plugins -->
     <script src="https://unpkg.com/jspsych@8.2.2"></script>
     <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
     <script src="https://unpkg.com/@jspsych/plugin-html-button-response@2.1.0"></script>
     <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+
     <link
       href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css"
       rel="stylesheet"
       type="text/css"
     />
+
     <style>
       body {
         background-color: #fafafa;
@@ -32,22 +36,15 @@
   <body></body>
 
   <script>
+    // Initialize jsPsych
     const jsPsych = initJsPsych({
       on_finish: () => jsPsych.data.displayData()
     });
 
-    const image_folder = "schema_diag/";
-    const jitter_range = [250, 500];
-    const image_duration = 2000;
-
-    // --------------------------
-    // Inline data for testing
-    // --------------------------
-    const data = [
-      { conceptA: "Intersecting_lines", conceptB: "Parallel_lines" },
-      { conceptA: "Intersecting_lines", conceptB: "Vertically_opposite_angle" },
-      { conceptA: "Parallel_lines", conceptB: "Corresponding_angle" }
-    ];
+    const image_folder = "schema_diag/";   // Folder containing your .png images
+    const json_path = "stimuli.js";  // The JSON file with conceptA, conceptB columns
+    const jitter_range = [250, 500];       // Random jitter duration range (ms)
+    const image_duration = 2500;           // Image display duration (ms)
 
     // --------------------------
     // Helper functions
@@ -56,6 +53,7 @@
       return Math.floor(Math.random() * (jitter_range[1] - jitter_range[0])) + jitter_range[0];
     }
 
+    // Function to create a trial from a pair
     function makeTrial(conceptA, conceptB) {
       const timeline = [];
 
@@ -140,29 +138,48 @@
     };
 
     // --------------------------
-    // Preload + Build Timeline
+    // Load JSON and Build Experiment
     // --------------------------
-    const concept_pairs = data.map((row) => [row.conceptA, row.conceptB]);
-    const image_files = concept_pairs.flat().map((c) => image_folder + c + ".png");
+    fetch(json_path)
+      .then(response => {
+        if (!response.ok) throw new Error(`Failed to load JSON: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        console.log("Loaded data:", data);
 
-    const preload = {
-      type: jsPsychPreload,
-      images: image_files
-    };
+        // Extract pairs from the JSON
+        const concept_pairs = data.map(row => [row.conceptA, row.conceptB]);
+        const image_files = concept_pairs.flat().map(c => image_folder + c + ".png");
 
-    const trials = concept_pairs.map(([A, B]) => makeTrial(A, B));
-    const timeline = [start_screen, preload, ...trials];
+        // Preload images
+        const preload = {
+          type: jsPsychPreload,
+          images: image_files
+        };
 
-    jsPsych.run(timeline).then(() => {
-    const csvData = jsPsych.data.get().csv();
-    fetch("https://script.google.com/macros/s/AKfycbwwyTb3hUaLYi7Jvfl2qLJOrkgR5U_5azQ5aGBtEZsc1CslbR2D7lXdTQJhM6tp0iEeKw/exec", {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ data: csvData })
-    });
-  });
+        // Build all trials
+        const trials = concept_pairs.map(([A, B]) => makeTrial(A, B));
+
+        // Complete timeline
+        const timeline = [start_screen, preload, ...trials];
+
+        // Run the experiment
+        jsPsych.run(timeline).then(() => {
+          const csvData = jsPsych.data.get().csv();
+
+          // Send data to Google Sheets via Apps Script endpoint
+          fetch("https://script.google.com/macros/s/AKfycbwwyTb3hUaLYi7Jvfl2qLJOrkgR5U_5azQ5aGBtEZsc1CslbR2D7lXdTQJhM6tp0iEeKw/exec", {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: csvData })
+          });
+        });
+      })
+      .catch(err => {
+        console.error("Error loading JSON:", err);
+        document.body.innerHTML = `<p style='color:red;'>Error loading data file. Check console for details.</p>`;
+      });
   </script>
 </html>
