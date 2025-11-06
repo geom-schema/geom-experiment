@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Schema Association Task (No CSV)</title>
+    <script src="https://unpkg.com/jspsych@8.2.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@2.1.0"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+    <link
+      href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <style>
+      body {
+        background-color: #fafafa;
+        font-family: sans-serif;
+        text-align: center;
+      }
+      img {
+        max-height: 500px;
+        margin: 30px;
+      }
+      .jspsych-btn {
+        font-size: 18px;
+        margin: 10px;
+      }
+    </style>
+  </head>
+
+  <body></body>
+
+  <script>
+    const jsPsych = initJsPsych({
+      on_finish: () => jsPsych.data.displayData()
+    });
+
+    const image_folder = "schema_diag/";
+    const jitter_range = [250, 500];
+    const image_duration = 2000;
+
+    // --------------------------
+    // Inline data for testing
+    // --------------------------
+    const data = [
+      { conceptA: "Intersecting_lines", conceptB: "Parallel_lines" },
+      { conceptA: "Intersecting_lines", conceptB: "Vertically_opposite_angle" },
+      { conceptA: "Parallel_lines", conceptB: "Corresponding_angle" }
+    ];
+
+    // --------------------------
+    // Helper functions
+    // --------------------------
+    function randomJitter() {
+      return Math.floor(Math.random() * (jitter_range[1] - jitter_range[0])) + jitter_range[0];
+    }
+
+    function makeTrial(conceptA, conceptB) {
+      const timeline = [];
+
+      // Jitter before A
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: "",
+        trial_duration: randomJitter(),
+        choices: "NO_KEYS"
+      });
+
+      // Show concept A
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src='${image_folder + conceptA}.png'>`,
+        trial_duration: image_duration,
+        choices: "NO_KEYS",
+        data: { conceptA, conceptB, phase: "A" }
+      });
+
+      // Jitter
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: "",
+        trial_duration: randomJitter(),
+        choices: "NO_KEYS"
+      });
+
+      // Show concept B
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src='${image_folder + conceptB}.png'>`,
+        trial_duration: image_duration,
+        choices: "NO_KEYS",
+        data: { conceptA, conceptB, phase: "B" }
+      });
+
+      // Jitter
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: "",
+        trial_duration: randomJitter(),
+        choices: "NO_KEYS"
+      });
+
+      // Association Yes/No
+      timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `<p>Do you think these two concepts are connected?</p>`,
+        choices: ["Yes", "No"],
+        data: { conceptA, conceptB, task: "association" }
+      });
+
+      // Relation type
+      timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `<p>What type of relation do they have?</p>`,
+        choices: [
+          "Logical inference",
+          "Part-whole relation",
+          "Categorical relation",
+          "Thematic relation",
+          "Null - no relation"
+        ],
+        data: { conceptA, conceptB, task: "relation_type" }
+      });
+
+      return { timeline };
+    }
+
+    // --------------------------
+    // Start screen
+    // --------------------------
+    const start_screen = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+        <h2>Schema Association Task</h2>
+        <p>You will see two geometric concepts, one after another.<br>
+        Decide whether they are connected and specify the relation type.</p>
+      `,
+      choices: ["Start Experiment"]
+    };
+
+    // --------------------------
+    // Preload + Build Timeline
+    // --------------------------
+    const concept_pairs = data.map((row) => [row.conceptA, row.conceptB]);
+    const image_files = concept_pairs.flat().map((c) => image_folder + c + ".png");
+
+    const preload = {
+      type: jsPsychPreload,
+      images: image_files
+    };
+
+    const trials = concept_pairs.map(([A, B]) => makeTrial(A, B));
+    const timeline = [start_screen, preload, ...trials];
+
+    jsPsych.run(timeline);
+  </script>
+</html>
