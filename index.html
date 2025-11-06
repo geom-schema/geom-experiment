@@ -42,8 +42,8 @@
     });
 
     const image_folder = "schema_diag/";   // Folder containing your .png images
-    const json_path = "stimuli.js";  // The JSON file with conceptA, conceptB columns
-    const jitter_range = [250, 500];       // Random jitter duration range (ms)
+    const json_path = "stimuli.js";        // The JSON file with conceptA, conceptB columns
+    const jitter_range = [400, 600];       // Random jitter duration range (ms)
     const image_duration = 2500;           // Image display duration (ms)
 
     // --------------------------
@@ -60,7 +60,7 @@
       // Jitter before A
       timeline.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: "",
+        stimulus: '<div style="font-size:80px;">+</div>',
         trial_duration: randomJitter(),
         choices: "NO_KEYS"
       });
@@ -77,7 +77,7 @@
       // Jitter
       timeline.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: "",
+        stimulus: '<div style="font-size:80px;">+</div>',
         trial_duration: randomJitter(),
         choices: "NO_KEYS"
       });
@@ -92,12 +92,12 @@
       });
 
       // Jitter
-      timeline.push({
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: "",
-        trial_duration: randomJitter(),
-        choices: "NO_KEYS"
-      });
+      // timeline.push({
+      //   type: jsPsychHtmlKeyboardResponse,
+      //   stimulus: "",
+      //   trial_duration: randomJitter(),
+      //   choices: "NO_KEYS"
+      // });
 
       // Association Yes/No
       timeline.push({
@@ -109,18 +109,20 @@
 
       // Relation type
       timeline.push({
+        timeline: [{
         type: jsPsychHtmlButtonResponse,
         stimulus: `<p>What type of relation do they have?</p>`,
         choices: [
-          "Logical inference",
+          "Inferential relation",
           "Part-whole relation",
           "Categorical relation",
-          "Thematic relation",
-          "Null - no relation"
+          "Thematic relation"
         ],
         data: { conceptA, conceptB, task: "relation_type" }
+        }],
+        conditional_function: () => jsPsych.data.get().last(1).values()[0].response === 0
       });
-
+      
       return { timeline };
     }
 
@@ -146,7 +148,7 @@
         return response.json();
       })
       .then(data => {
-        console.log("Loaded data:", data);
+        // console.log("Loaded data:", data);
 
         // Extract pairs from the JSON
         const concept_pairs = data.map(row => [row.conceptA, row.conceptB]);
